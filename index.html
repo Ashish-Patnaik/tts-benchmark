@@ -10,7 +10,7 @@
     <style>
         :root {
             /* Enterprise Palette */
-            --bg-body: #f8fafc;       /* Cool white/gray background */
+            --bg-body: #f8fafc;
             --bg-surface: #ffffff;
             --border-subtle: #e2e8f0;
             --border-focus: #cbd5e1;
@@ -19,16 +19,15 @@
             --text-secondary: #64748b;
             --text-tertiary: #94a3b8;
 
-            --accent: #3b82f6;        /* Professional Blue */
+            --accent: #3b82f6;
             
             /* Status Colors */
-            --rank-1: #fbbf24;        /* Gold */
-            --rank-2: #94a3b8;        /* Silver */
-            --rank-3: #b45309;        /* Bronze */
+            --rank-1: #fbbf24;
+            --rank-2: #94a3b8;
+            --rank-3: #b45309;
             
-            --radius: 6px;
+            --radius: 8px;
             --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             
             --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
@@ -80,6 +79,7 @@
             font-weight: 500;
             color: var(--text-tertiary);
             font-family: var(--font-mono);
+            white-space: nowrap; /* Prevent date breaking awkwardly */
         }
 
         /* --- KPI Cards --- */
@@ -114,6 +114,7 @@
             display: flex;
             align-items: baseline;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .kpi-sub {
@@ -128,9 +129,6 @@
             font-weight: 600;
             margin-bottom: 16px;
             color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         
         .card-container {
@@ -146,6 +144,7 @@
         .table-wrapper {
             width: 100%;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
         }
 
         table {
@@ -175,10 +174,8 @@
 
         tr:last-child td { border-bottom: none; }
 
-        .mono {
-            font-family: var(--font-mono);
-            color: var(--text-secondary);
-        }
+        .mono { font-family: var(--font-mono); color: var(--text-secondary); }
+        .score-primary { font-weight: 700; color: var(--text-primary); }
 
         .rank-badge {
             display: inline-flex;
@@ -195,7 +192,7 @@
         /* --- Methodology Grid --- */
         .method-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Adjusted min-width for mobile */
             gap: 20px;
             padding: 24px;
         }
@@ -228,10 +225,11 @@
             justify-content: flex-end;
             gap: 12px;
             background: #fcfcfc;
+            flex-wrap: wrap; /* Allow wrapping on tiny screens */
         }
 
         .btn-toggle {
-            padding: 6px 14px;
+            padding: 8px 16px; /* Larger touch target */
             font-size: 0.8rem;
             font-weight: 500;
             border: 1px solid var(--border-subtle);
@@ -249,15 +247,33 @@
             border-color: var(--text-primary);
         }
 
-        /* --- Utilities --- */
         .trend-up { color: var(--text-tertiary); font-size: 0.7em; vertical-align: middle; margin-left: 4px; }
         .trend-down { color: var(--text-tertiary); font-size: 0.7em; vertical-align: middle; margin-left: 4px; }
         
-        .score-primary { font-weight: 700; color: var(--text-primary); }
+        /* --- RESPONSIVE MEDIA QUERIES --- */
+        
+        /* Tablet & Smaller (Max 1024px) */
+        @media (max-width: 1024px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
 
+        /* Mobile (Max 768px) */
         @media (max-width: 768px) {
-            .kpi-grid { grid-template-columns: 1fr 1fr; }
+            .wrapper { padding: 20px 16px; }
+            
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+            
             .header-content h1 { font-size: 1.25rem; }
+            
+            .kpi-grid { grid-template-columns: 1fr; }
+            
+            .chart-controls { justify-content: flex-start; }
+            
+            /* Adjust chart container height dynamically in JS, but set base logic here */
         }
     </style>
 </head>
@@ -396,77 +412,81 @@
 </div>
 
 <script>
-    // --- Data & Configuration ---
-    
-    // Aesthetic Colors
-    const colors = {
-        c1: '#0f172a', // ElevenLabs (Dark)
-        c2: '#3b82f6', // Deepgram (Blue)
-        c3: '#10b981', // Rime (Green)
-        c4: '#f59e0b', // Cartesia (Amber)
+    const colors = { c1: '#0f172a', c2: '#3b82f6', c3: '#10b981', c4: '#f59e0b' };
+
+    // Common data definition
+    const traceData = [
+        {"marker":{"color":colors.c1},"name":"Overall","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[53.00, 52.46, 39.35, 22.01],"type":"bar"},
+        {"marker":{"color":colors.c2},"name":"WER","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[0.3934, 0.3833, 0.3906, 0.3964],"type":"bar"},
+        {"marker":{"color":colors.c3},"name":"Naturalness","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[2.38, 2.67, 3.08, 2.61],"type":"bar"},
+        {"marker":{"color":colors.c4},"name":"Prosody","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[48.22, 59.88, 42.37, 39.83],"type":"bar"},
+        {"marker":{"color":"#8b5cf6"},"name":"RTF","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[0.21, 0.73, 0.63, 0.33],"type":"bar"},
+        {"marker":{"color":"#ec4899"},"name":"Robustness","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[0.49, 0.56, 0.56, 0.58],"type":"bar"}
+    ];
+
+    // Titles for each trace
+    const titles = ["Overall Score", "WER (Lower is Better)", "Naturalness", "Prosody", "Speed (RTF)", "Robustness"];
+
+    // Base Layout Config
+    const baseLayout = {
+        template: "plotly_white",
+        font: { family: "Inter, sans-serif", color: "#111827" },
+        showlegend: false,
+        margin: { t: 40, b: 40, l: 40, r: 20 },
     };
 
-    const barChartData = {
-        "data": [
-            // Overall
-            {"marker":{"color":colors.c1},"name":"Overall","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[53.00, 52.46, 39.35, 22.01],"type":"bar","xaxis":"x","yaxis":"y"},
-            
-            // WER
-            {"marker":{"color":colors.c2},"name":"WER","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[0.3934, 0.3833, 0.3906, 0.3964],"type":"bar","xaxis":"x2","yaxis":"y2"},
-            
-            // Naturalness (Renamed from MOS)
-            {"marker":{"color":colors.c3},"name":"Naturalness","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[2.38, 2.67, 3.08, 2.61],"type":"bar","xaxis":"x3","yaxis":"y3"},
-            
-            // Prosody
-            {"marker":{"color":colors.c4},"name":"Prosody","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[48.22, 59.88, 42.37, 39.83],"type":"bar","xaxis":"x4","yaxis":"y4"},
-            
-            // Speed
-            {"marker":{"color":"#8b5cf6"},"name":"RTF","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[0.21, 0.73, 0.63, 0.33],"type":"bar","xaxis":"x5","yaxis":"y5"},
-            
-            // Robustness
-            {"marker":{"color":"#ec4899"},"name":"Robustness","x":["ElevenLabs","Deepgram","Rime","Cartesia"],"y":[0.49, 0.56, 0.56, 0.58],"type":"bar","xaxis":"x6","yaxis":"y6"}
-        ],
-        "layout": {
-            "template": "plotly_white",
-            "font": { "family": "Inter, sans-serif", "color": "#111827" },
-            "showlegend": false,
-            "margin": { "t": 40, "b": 40, "l": 40, "r": 20 },
-            "grid": {
-                "rows": 2, 
-                "columns": 3, 
-                "pattern": "independent"
-            },
-            
-            // Row 1 Axes
-            "xaxis":  { "domain": [0, 0.28], "showgrid": false },
-            "yaxis":  { "domain": [0.6, 1],  "title": "Score", "automargin": true },
-            
-            "xaxis2": { "domain": [0.36, 0.64], "showgrid": false },
-            "yaxis2": { "domain": [0.6, 1], "title": "WER (Low is good)", "tickformat": ".2f", "automargin": true },
-            
-            "xaxis3": { "domain": [0.72, 1], "showgrid": false },
-            "yaxis3": { "domain": [0.6, 1], "title": "Naturalness Score", "tickformat": ".1f", "automargin": true },
+    function getBarLayout(isMobile) {
+        let layout = JSON.parse(JSON.stringify(baseLayout)); // Deep copy
 
-            // Row 2 Axes
-            "xaxis4": { "domain": [0, 0.28], "showgrid": false },
-            "yaxis4": { "domain": [0, 0.4], "title": "Prosody Score", "automargin": true },
+        if (isMobile) {
+            // MOBILE: Stacked Vertical (6 rows, 1 col)
+            // Adjust height
+            document.getElementById('bar-view').style.height = '1200px';
 
-            "xaxis5": { "domain": [0.36, 0.64], "showgrid": false },
-            "yaxis5": { "domain": [0, 0.4], "title": "RTF (Low is good)", "tickformat": ".2f", "automargin": true },
+            const gap = 0.05;
+            const rowHeight = (1 - (5 * gap)) / 6;
 
-            "xaxis6": { "domain": [0.72, 1], "showgrid": false },
-            "yaxis6": { "domain": [0, 0.4], "title": "Robustness", "tickformat": ".2f", "automargin": true },
+            for (let i = 0; i < 6; i++) {
+                const yStart = 1 - (i * (rowHeight + gap)) - rowHeight;
+                const yEnd = 1 - (i * (rowHeight + gap));
+                
+                // Axis indices (1 based, first is empty string)
+                const axisId = i === 0 ? '' : (i + 1);
+                
+                layout[`xaxis${axisId}`] = { domain: [0, 1], showgrid: false, anchor: `y${axisId}` };
+                layout[`yaxis${axisId}`] = { domain: [yStart, yEnd], title: titles[i], automargin: true, anchor: `x${axisId}` };
+                
+                // Formatting specific axes
+                if (i === 1 || i === 4 || i === 5) layout[`yaxis${axisId}`].tickformat = ".2f"; // WER, RTF, Rob
+                if (i === 2) layout[`yaxis${axisId}`].tickformat = ".1f"; // Naturalness
+            }
 
-            "annotations": [
-                { text: "Overall Score", x: 0.14, y: 1.05, xref: "paper", yref: "paper", showarrow: false, font: {size: 13, weight: 600} },
-                { text: "WER", x: 0.5, y: 1.05, xref: "paper", yref: "paper", showarrow: false, font: {size: 13, weight: 600} },
-                { text: "Naturalness", x: 0.86, y: 1.05, xref: "paper", yref: "paper", showarrow: false, font: {size: 13, weight: 600} },
-                { text: "Prosody", x: 0.14, y: 0.45, xref: "paper", yref: "paper", showarrow: false, font: {size: 13, weight: 600} },
-                { text: "Speed (RTF)", x: 0.5, y: 0.45, xref: "paper", yref: "paper", showarrow: false, font: {size: 13, weight: 600} },
-                { text: "Robustness", x: 0.86, y: 0.45, xref: "paper", yref: "paper", showarrow: false, font: {size: 13, weight: 600} }
-            ]
+        } else {
+            // DESKTOP: Grid (2 rows, 3 cols)
+            document.getElementById('bar-view').style.height = '550px';
+            
+            // Row 1
+            layout.xaxis  = { domain: [0, 0.28], showgrid: false, anchor: 'y' };
+            layout.yaxis  = { domain: [0.58, 1], title: titles[0], automargin: true };
+            
+            layout.xaxis2 = { domain: [0.36, 0.64], showgrid: false, anchor: 'y2' };
+            layout.yaxis2 = { domain: [0.58, 1], title: titles[1], tickformat: ".2f", automargin: true };
+            
+            layout.xaxis3 = { domain: [0.72, 1], showgrid: false, anchor: 'y3' };
+            layout.yaxis3 = { domain: [0.58, 1], title: titles[2], tickformat: ".1f", automargin: true };
+
+            // Row 2
+            layout.xaxis4 = { domain: [0, 0.28], showgrid: false, anchor: 'y4' };
+            layout.yaxis4 = { domain: [0, 0.42], title: titles[3], automargin: true };
+
+            layout.xaxis5 = { domain: [0.36, 0.64], showgrid: false, anchor: 'y5' };
+            layout.yaxis5 = { domain: [0, 0.42], title: titles[4], tickformat: ".2f", automargin: true };
+
+            layout.xaxis6 = { domain: [0.72, 1], showgrid: false, anchor: 'y6' };
+            layout.yaxis6 = { domain: [0, 0.42], title: titles[5], tickformat: ".2f", automargin: true };
         }
-    };
+        return layout;
+    }
 
     const radarChartData = {
         "data": [
@@ -487,9 +507,21 @@
         }
     };
 
-    function initCharts() {
-        Plotly.newPlot('bar-view', barChartData.data, barChartData.layout, {responsive: true, displayModeBar: false});
-        Plotly.newPlot('radar-view', radarChartData.data, radarChartData.layout, {responsive: true, displayModeBar: false});
+    // Prepare Bar Data traces with correct axes
+    function getBarData() {
+        return traceData.map((trace, index) => {
+            const axisSuffix = index === 0 ? '' : (index + 1);
+            return { ...trace, xaxis: `x${axisSuffix}`, yaxis: `y${axisSuffix}` };
+        });
+    }
+
+    function drawCharts() {
+        const isMobile = window.innerWidth < 768;
+        const layout = getBarLayout(isMobile);
+        const data = getBarData();
+        
+        Plotly.react('bar-view', data, layout, {responsive: true, displayModeBar: false});
+        Plotly.react('radar-view', radarChartData.data, radarChartData.layout, {responsive: true, displayModeBar: false});
     }
 
     function switchView(view) {
@@ -500,10 +532,20 @@
         btns.forEach(b => b.classList.remove('active'));
         event.target.classList.add('active');
         
-        window.dispatchEvent(new Event('resize'));
+        // Slight delay to ensure div is visible before redrawing
+        setTimeout(drawCharts, 50);
     }
 
-    initCharts();
+    // Initialize
+    drawCharts();
+
+    // Responsive Listener with Debounce
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(drawCharts, 200);
+    });
+
 </script>
 
 </body>
